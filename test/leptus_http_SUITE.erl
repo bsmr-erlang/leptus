@@ -19,7 +19,8 @@ init_per_suite(Config) ->
     Handlers = [
                 {leptus_http1, []},
                 {leptus_http2, []},
-                {leptus_http3, []}
+                {leptus_http3, []},
+                {leptus_http4, []}
                ],
     {ok, _} = leptus:start_http(Handlers),
     Config.
@@ -63,7 +64,11 @@ http_get(_) ->
     {200, _, C8} = request(M, "/users/asdf/profile"),
     B1 = response_body(C8),
     {200, _, C9} = request(M, "/users/you/profile"),
-    B2 = response_body(C9).
+    B2 = response_body(C9),
+
+    B3 = <<129,163,109,115,103,168,119,104,97,116,101,118,101,114>>,
+    {200, _, C10} = request(M, "/msgpack/whatever"),
+    B3 = response_body(C10).
 
 http_404(_) ->
     {404, _, _} = request(<<"GET">>, "/asd"),

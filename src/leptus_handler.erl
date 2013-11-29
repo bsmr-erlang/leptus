@@ -148,6 +148,9 @@ reply(Status, Headers, Body, HandlerState, Req, Ctx) ->
             json ->
                 {[{<<"content-type">>, <<"application/json">>}],
                  jiffy:encode({Body})};
+            msgpack ->
+                {[{<<"content-type">>, <<"application/x-msgpack">>}],
+                 msgpack:pack({Body}, [jiffy])};
             [] ->
                 {[{<<"content-type">>, <<"text/plain">>}], Body};
             _ ->
