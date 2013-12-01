@@ -1,17 +1,21 @@
 -module(leptus_http_SUITE).
 
+%% Common Test callbacks
 -export([init_per_suite/1]).
 -export([end_per_suite/1]).
 -export([all/0]).
 
+%% test cases
 -export([http_get/1]).
+-export([http_put/1]).
+-export([http_post/1]).
+-export([http_delete/1]).
 -export([http_404/1]).
 -export([http_405/1]).
--export([http_post/1]).
--export([http_put/1]).
--export([http_delete/1]).
 -export([http_is_authorized/1]).
+-export([http_msgpack/1]).
 
+%% helpers
 -import(helpers, [request/2, request/3, request/4, response_body/1]).
 
 
@@ -30,8 +34,8 @@ end_per_suite(_Config) ->
 
 all() ->
     [
-     http_get, http_404, http_405, http_post, http_put, http_delete,
-     http_is_authorized
+     http_get, http_post, http_put, http_delete,
+     http_404, http_405, http_is_authorized, http_msgpack
     ].
 
 http_get(_) ->
@@ -70,6 +74,32 @@ http_get(_) ->
     {200, _, C10} = request(M, "/msgpack/whatever"),
     B3 = response_body(C10).
 
+http_put(_) ->
+    M = <<"PUT">>,
+    B1 = <<"password=lkjhgf&password_confirmation=lkjhg">>,
+    {403, _, C1} = request(M, "/settings/change-password", [], B1),
+    <<"Passwords didn't match.">> = response_body(C1),
+
+    B2 = <<"password=lkjhgf&password_confirmation=lkjhgf">>,
+    {200, _, C2} = request(M, "/settings/change-password", [], B2),
+    <<"Your password has been changed.">> = response_body(C2).
+
+http_post(_) ->
+    M = <<"POST">>,
+    B1 = <<"username=asdf&email=asdf@a.<...>.com">>,
+    {403, _, C1} = request(M, "/user/register", [], B1),
+    <<"Username is already taken.">> = response_body(C1),
+
+    B2 = <<"username=asdfg&email=something@a.<...>.com">>,
+    {201, _, C2} = request(M, "/user/register", [], B2),
+    <<"Thanks for registration.">> = response_body(C2).
+
+http_delete(_) ->
+    M = <<"DELETE">>,
+    {404, _, _} = request(M, "/users/jack/posts/32601"),
+    {404, _, _} = request(M, "/users/jack/posts/3268"),
+    {204, _, _} = request(M, "/users/jack/posts/219").
+
 http_404(_) ->
     {404, _, _} = request(<<"GET">>, "/asd"),
     {404, _, _} = request(<<"GET">>, "/asdf"),
@@ -97,32 +127,6 @@ http_405(_) ->
     <<"GET, PUT, POST">> = F(H6),
     <<"DELETE">> = F(H7).
 
-http_post(_) ->
-    M = <<"POST">>,
-    B1 = <<"username=asdf&email=asdf@a.<...>.com">>,
-    {403, _, C1} = request(M, "/user/register", [], B1),
-    <<"Username is already taken.">> = response_body(C1),
-
-    B2 = <<"username=asdfg&email=something@a.<...>.com">>,
-    {201, _, C2} = request(M, "/user/register", [], B2),
-    <<"Thanks for registration.">> = response_body(C2).
-
-http_put(_) ->
-    M = <<"PUT">>,
-    B1 = <<"password=lkjhgf&password_confirmation=lkjhg">>,
-    {403, _, C1} = request(M, "/settings/change-password", [], B1),
-    <<"Passwords didn't match.">> = response_body(C1),
-
-    B2 = <<"password=lkjhgf&password_confirmation=lkjhgf">>,
-    {200, _, C2} = request(M, "/settings/change-password", [], B2),
-    <<"Your password has been changed.">> = response_body(C2).
-
-http_delete(_) ->
-    M = <<"DELETE">>,
-    {404, _, _} = request(M, "/users/jack/posts/32601"),
-    {404, _, _} = request(M, "/users/jack/posts/3268"),
-    {204, _, _} = request(M, "/users/jack/posts/219").
-
 http_is_authorized(_) ->
     A1 = base64:encode(<<"123:456">>),
     A2 = base64:encode(<<"123:986">>),
@@ -140,3 +144,18 @@ http_is_authorized(_) ->
     <<"{\"error\":\"unauthorized\"}">> = response_body(C),
     <<"application/json">> = proplists:get_value(<<"content-type">>, H1),
     <<"{\"error\":\"unauthorized\"}">> = response_body(C1).
+
+http_msgpack(_) ->
+    M = <<"GET">>,
+    ContentType = <<"application/x-msgpack">>,
+    B1 = <<129,163,109,115,103,168,119,104,97,116,101,118,101,114>>,
+    B2 = <<129,163,109,115,103,181,99,111,111,108,45,104,109,109,
+           45,109,115,103,112,97,99,107,45,99,111,111,108>>,
+
+    {200, H1, C1} = request(M, "/msgpack/whatever"),
+    {200, H2, C2} = request(M, "/msgpack/cool-hmm-msgpack-cool"),
+
+    B1 = response_body(C1),
+    B2 = response_body(C2),
+    ContentType = proplists:get_value(<<"content-type">>, H1),
+    ContentType = proplists:get_value(<<"content-type">>, H2).

@@ -10,10 +10,19 @@
 -type req() :: cowboy_req:req().
 -type route() :: cowboy_router:route_match().
 -type status() :: non_neg_integer() | binary().
--type headers() :: json | cowboy:http_headers().
--type body() :: binary() | string().
+-type headers() :: cowboy:http_headers().
+-type body() :: binary() | string() | {json | msgpack, json_term()}.
 -type handler_state() :: any().
 -type method() :: get | put | post | delete.
+-type json_term() :: [json_term()]
+                   | {binary() | atom(), json_term()}
+                   | true
+                   | false
+                   | null
+                   | integer()
+                   | float()
+                   | binary().
+-type data_format() :: text | json | msgpack.
 
 -record(ctx, {
           handler :: module(),
@@ -139,22 +148,19 @@ reply({Status, Body, HandlerState}, Req, Ctx) ->
 reply({Status, Headers, Body, HandlerState}, Req, Ctx) ->
     reply(Status, Headers, Body, HandlerState, Req, Ctx).
 
--spec reply(status(), headers(), body(), handler_state(), req(), ctx()) -> {ok, req(), ctx()}.
+-spec reply(status(), headers(), body(), handler_state(), req(), ctx()) ->
+                   {ok, req(), ctx()}.
 reply(Status, Headers, Body, HandlerState, Req, Ctx) ->
     {
       Headers1,
       Body1
-    } = case Headers of
-            json ->
-                {[{<<"content-type">>, <<"application/json">>}],
-                 jiffy:encode({Body})};
-            msgpack ->
-                {[{<<"content-type">>, <<"application/x-msgpack">>}],
-                 msgpack:pack({Body}, [jiffy])};
-            [] ->
-                {[{<<"content-type">>, <<"text/plain">>}], Body};
+    } = case Body of
+            {Type=json, Body2}->
+                {set_content_type(Type, Headers), jiffy:encode({Body2})};
+            {Type=msgpack, Body2}->
+                {set_content_type(Type, Headers), msgpack:pack({Body2}, [jiffy])};
             _ ->
-                {Headers, Body}
+                {set_content_type(text, Headers), Body}
         end,
     {ok, Req1} = cowboy_req:reply(Status, Headers1, Body1, Req),
     {ok, Req1, set_handler_state(Ctx, HandlerState)}.
@@ -164,3 +170,11 @@ handler_terminate(Reason, Req, Ctx) ->
     Handler = get_handler(Ctx),
     HandlerState = get_handler_state(Ctx),
     Handler:terminate(Reason, Req, HandlerState).
+
+-spec set_content_type(data_format(), headers()) -> headers().
+set_content_type(Type, Headers) ->
+    [{<<"Content-Type">>, content_type(Type)}|Headers].
+
+content_type(text) -> <<"text/plain">>;
+content_type(json) -> <<"application/json">>;
+content_type(msgpack) -> <<"application/x-msgpack">>.

@@ -45,7 +45,7 @@ get("/hi/:name", Req, State) ->
     Status = 200,
     Name = leptus_req:param(name, Req),
     Body = [{<<"say">>, <<"Hi">>}, {<<"to">>, Name}],
-    {Status, json, Body, State}.
+    {Status, {json, Body}, State}.
 
 terminate(_Reason, _Req, _State) ->
     ok.
@@ -66,10 +66,24 @@ $ curl localhost:8000/hi/Leptus
 {"say":"Hi","to":"Leptus"}
 ```
 
+## Features
+
+* Supports `GET`, `PUT`, `POST` and `DELETE` HTTP methods
+* Can respond in plain text or JSON
+* Supports basic authentication
+* Can upgrade the code while it's running (no stopping is required)
+
+## Documentation
+
+Check out the [docs](docs) directory.
+
+## Support
+
+Feel free to open up [issues](https://github.com/s1n4/leptus/issues)
+or get in touch with [@sinasamavati](https://twitter.com/sinasamavati) on Twitter.
+
 ## License
 
 MIT, see LICENSE file for more details.
 
-
 [![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/s1n4/leptus/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
-

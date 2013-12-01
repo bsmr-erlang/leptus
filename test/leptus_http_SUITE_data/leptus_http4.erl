@@ -12,7 +12,7 @@ init(_Route, _Req, State) -> {ok, State}.
 
 get("/msgpack/:msg", Req, State) ->
     Msg = leptus_req:param(msg, Req),
-    {200, msgpack, [{<<"msg">>, Msg}], State}.
+    {{msgpack, [{<<"msg">>, Msg}]}, State}.
 
 terminate(_Reason, _Req, _State) ->
     ok.
